@@ -1,5 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { generatePresetQuestion, generateCustomQuestion } from '../core/generator';
+import {
+  generatePresetQuestion,
+  generatePresetQuestions,
+  generateCustomQuestion,
+} from '../core/generator';
 import { resetRandomGenerator } from '../core/random';
 
 describe('generator', () => {
@@ -174,6 +178,17 @@ describe('generator', () => {
       expect(subtrahend % 100).not.toBe(0);
       // Result should be non-negative
       expect(minuend).toBeGreaterThan(subtrahend);
+    });
+
+    it('should generate a hypothesis-allocation question and balanced set', () => {
+      const rng = createSeededRandom(12345);
+      const question = generatePresetQuestion('hypothesis-allocation', rng);
+      const questions = generatePresetQuestions('hypothesis-allocation', 20, rng);
+
+      expect(question.kind).toBe('hypothesis-allocation');
+      expect(question.options).toHaveLength(4);
+      expect(questions).toHaveLength(20);
+      expect(questions.every(item => item.kind === 'hypothesis-allocation')).toBe(true);
     });
   });
 

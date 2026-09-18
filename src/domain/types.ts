@@ -1,14 +1,58 @@
 // 运算类型
 export type OperationType = 'add' | 'subtract' | 'multiply' | 'divide';
 
-// 题目
-export interface Question {
+// 四则运算题。kind 可选用于兼容旧版 localStorage 记录。
+export interface ArithmeticQuestion {
+  kind?: 'arithmetic';
   id: string;
   type: OperationType;
   operands: number[];
   operators?: Array<'add' | 'subtract'>; // 多项混合加减中，各相邻操作数之间的运算符
   answer: string; // 正确答案（完整答案或前三位码）
   fullResult: string; // 完整计算结果（用于展示）
+}
+
+export type HypothesisAllocationTarget = 'base' | 'growth';
+export type HypothesisAllocationDifficulty = 'easy' | 'medium' | 'hard';
+export type ChoiceId = 'A' | 'B' | 'C' | 'D';
+
+export interface HypothesisAllocationOption {
+  id: ChoiceId;
+  value: number;
+  display: string;
+  mistakeTag?: string;
+}
+
+// 假设分配题
+export interface HypothesisAllocationQuestion {
+  kind: 'hypothesis-allocation';
+  id: string;
+  presentValue: number;
+  ratePercent: number;
+  target: HypothesisAllocationTarget;
+  options: HypothesisAllocationOption[];
+  answer: ChoiceId;
+  fullResult: string;
+  exactValue: number;
+  methodEstimate: number;
+  initialBase: number;
+  initialGrowth: number;
+  tail: number;
+  tailBase: number;
+  tailGrowth: number;
+  solutionSteps: string[];
+  difficulty: HypothesisAllocationDifficulty;
+  fingerprint: string;
+  generationAttempts: number;
+  usedFallback: boolean;
+}
+
+export type Question = ArithmeticQuestion | HypothesisAllocationQuestion;
+
+export function isHypothesisAllocationQuestion(
+  question: Question
+): question is HypothesisAllocationQuestion {
+  return question.kind === 'hypothesis-allocation';
 }
 
 // 训练模式类型
@@ -31,7 +75,8 @@ export type PresetMode =
   | 'multiply-estimate'
   | 'three-digit-divide-one-digit'
   | 'three-digit-divide-two-digit'
-  | 'three-digit-divide-four-digit';
+  | 'three-digit-divide-four-digit'
+  | 'hypothesis-allocation';
 
 // 自定义训练配置
 export interface CustomConfig {

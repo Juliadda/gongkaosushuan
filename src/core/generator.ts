@@ -1,7 +1,18 @@
-import type { Question, OperationType, PresetMode, CustomConfig } from '../domain/types';
+import type {
+  ArithmeticQuestion,
+  HypothesisAllocationQuestion,
+  Question,
+  OperationType,
+  PresetMode,
+  CustomConfig,
+} from '../domain/types';
 import { randomInt, randomRange, type RandomGenerator } from './random';
 import { getCorrectAnswer } from './checker';
 import { calculateAnswer, calculateMixedAddSubtract, formatDivisionResult } from './calculator';
+import {
+  generateHypothesisAllocationQuestion,
+  generateHypothesisAllocationSet,
+} from './hypothesisAllocation';
 
 let questionIdCounter = 0;
 
@@ -15,7 +26,7 @@ export function generateQuestion(
   operands: number[],
   presetMode?: PresetMode,
   operators?: Array<'add' | 'subtract'>
-): Question {
+): ArithmeticQuestion {
   const answer = getCorrectAnswer(type, operands, presetMode, operators);
 
   let fullResult: string;
@@ -28,6 +39,7 @@ export function generateQuestion(
   }
 
   return {
+    kind: 'arithmetic',
     id: generateId(),
     type,
     operands,
@@ -44,7 +56,7 @@ function generateBinaryQuestion(
   rightDigits: number,
   presetMode?: PresetMode,
   rng?: RandomGenerator
-): Question {
+): ArithmeticQuestion {
   if (type === 'subtract' && leftDigits < rightDigits) {
     throw new Error('Non-negative subtraction requires leftDigits >= rightDigits');
   }
@@ -67,13 +79,13 @@ function generateBinaryQuestion(
 }
 
 // 生成多数相加题目
-function generateMultiAddQuestion(count: number, digits: number, rng?: RandomGenerator): Question {
+function generateMultiAddQuestion(count: number, digits: number, rng?: RandomGenerator): ArithmeticQuestion {
   const operands = Array.from({ length: count }, () => randomInt(digits, rng));
   return generateQuestion('add', operands);
 }
 
 // 生成混合加减题目
-function generateMixedAddSubtractQuestion(count: number, rng?: RandomGenerator): Question {
+function generateMixedAddSubtractQuestion(count: number, rng?: RandomGenerator): ArithmeticQuestion {
   const operands: number[] = [randomInt(3, rng)];
   const operators: Array<'add' | 'subtract'> = [];
   let current = operands[0];
@@ -104,7 +116,7 @@ function generateMixedAddSubtractQuestion(count: number, rng?: RandomGenerator):
 }
 
 // 生成凑整百题目（减法练习）
-function generateRoundHundredQuestion(rng?: RandomGenerator): Question {
+function generateRoundHundredQuestion(rng?: RandomGenerator): ArithmeticQuestion {
   // 生成整百数作为被减数（100-900）
   const hundreds = randomRange(1, 9, rng);
   const nextHundred = hundreds * 100;
@@ -122,6 +134,15 @@ function generateRoundHundredQuestion(rng?: RandomGenerator): Question {
 }
 
 // 根据预设模式生成题目
+export function generatePresetQuestion(
+  mode: 'hypothesis-allocation',
+  rng?: RandomGenerator
+): HypothesisAllocationQuestion;
+export function generatePresetQuestion(
+  mode: Exclude<PresetMode, 'hypothesis-allocation'>,
+  rng?: RandomGenerator
+): ArithmeticQuestion;
+export function generatePresetQuestion(mode: PresetMode, rng?: RandomGenerator): Question;
 export function generatePresetQuestion(mode: PresetMode, rng?: RandomGenerator): Question {
   switch (mode) {
     case 'two-digit-add-subtract': {
@@ -184,13 +205,28 @@ export function generatePresetQuestion(mode: PresetMode, rng?: RandomGenerator):
     case 'three-digit-divide-four-digit':
       return generateBinaryQuestion('divide', 3, 4, mode, rng);
 
+    case 'hypothesis-allocation':
+      return generateHypothesisAllocationQuestion(rng);
+
     default:
       throw new Error(`Unknown preset mode: ${mode}`);
   }
 }
 
+// 生成整组题目。方法题在组级别平衡目标、难度和正确选项位置。
+export function generatePresetQuestions(
+  mode: PresetMode,
+  count: number,
+  rng?: RandomGenerator
+): Question[] {
+  if (mode === 'hypothesis-allocation') {
+    return generateHypothesisAllocationSet(count, rng);
+  }
+  return Array.from({ length: count }, () => generatePresetQuestion(mode, rng));
+}
+
 // 根据自定义配置生成题目
-export function generateCustomQuestion(config: CustomConfig, rng?: RandomGenerator): Question {
+export function generateCustomQuestion(config: CustomConfig, rng?: RandomGenerator): ArithmeticQuestion {
   if (config.trainingType === 'single') {
     // 单一运算
     const type = config.operations[0];

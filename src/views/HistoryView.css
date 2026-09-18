@@ -227,6 +227,16 @@
   color: var(--color-success);
 }
 
+.history-solution-steps {
+  margin: var(--spacing-md) 0 0;
+  padding-left: 1.5rem;
+  line-height: 1.7;
+}
+
+.history-solution-steps li + li {
+  margin-top: var(--spacing-xs);
+}
+
 .no-wrong-answers {
   text-align: center;
   padding: var(--spacing-xl);

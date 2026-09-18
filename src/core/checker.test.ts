@@ -4,7 +4,9 @@ import {
   usesFirstThreeDigits,
   getCorrectAnswer,
   isDivisionEstimateWithinTolerance,
+  checkQuestionAnswer,
 } from '../core/checker';
+import { generateHypothesisAllocationQuestion } from './hypothesisAllocation';
 
 describe('checker', () => {
   describe('usesFirstThreeDigits', () => {
@@ -142,6 +144,16 @@ describe('checker', () => {
 
     it('should return first three digits for multiply-estimate', () => {
       expect(getCorrectAnswer('multiply', [23, 45], 'multiply-estimate')).toBe('103');
+    });
+  });
+
+  describe('checkQuestionAnswer', () => {
+    it('checks a method question by option id', () => {
+      const question = generateHypothesisAllocationQuestion(() => 0.42);
+
+      expect(checkQuestionAnswer(question.answer, question, 'hypothesis-allocation')).toBe(true);
+      expect(checkQuestionAnswer(question.answer.toLowerCase(), question, 'hypothesis-allocation')).toBe(true);
+      expect(checkQuestionAnswer(question.answer === 'A' ? 'B' : 'A', question, 'hypothesis-allocation')).toBe(false);
     });
   });
 });

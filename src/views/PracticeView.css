@@ -216,6 +216,26 @@
   font-style: italic;
 }
 
+.method-error {
+  margin-top: var(--spacing-md);
+  text-align: center;
+}
+
+.method-next-action {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--spacing-lg);
+}
+
+.solution-steps {
+  margin: var(--spacing-lg) 0 0;
+  padding-left: 1.5rem;
+}
+
+.solution-steps li {
+  margin-bottom: var(--spacing-sm);
+}
+
 @media (max-width: 1024px) {
   .practice-content {
     grid-template-columns: 1fr;

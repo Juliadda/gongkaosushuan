@@ -88,6 +88,7 @@ export function HomeView({ onStartTraining, onViewHistory }: HomeViewProps) {
   const addSubtractModes = PRESET_MODES.filter(m => m.category === 'add-subtract');
   const multiplyModes = PRESET_MODES.filter(m => m.category === 'multiply');
   const divideModes = PRESET_MODES.filter(m => m.category === 'divide');
+  const speedMethodModes = PRESET_MODES.filter(m => m.category === 'speed-method');
 
   return (
     <div className="home-view">
@@ -135,6 +136,22 @@ export function HomeView({ onStartTraining, onViewHistory }: HomeViewProps) {
             <h3>除法类</h3>
             <div className="mode-grid">
               {divideModes.map(mode => (
+                <button
+                  key={mode.id}
+                  className={`mode-card ${selectedMode === mode.id ? 'selected' : ''}`}
+                  onClick={() => setSelectedMode(mode.id)}
+                  aria-pressed={selectedMode === mode.id}
+                >
+                  {mode.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mode-category">
+            <h3>资料速算</h3>
+            <div className="mode-grid">
+              {speedMethodModes.map(mode => (
                 <button
                   key={mode.id}
                   className={`mode-card ${selectedMode === mode.id ? 'selected' : ''}`}
@@ -287,8 +304,9 @@ export function HomeView({ onStartTraining, onViewHistory }: HomeViewProps) {
           <div className="answer-rule-hint">
             <p>
               <strong>判题规则：</strong>
-              加法、减法、普通乘法输入完整答案；
-              除法输入前三位估算码并允许 ±3% 相对误差；乘法估算输入精确前三位码。
+              {selectedMode === 'hypothesis-allocation'
+                ? ' 根据现期量和增长率，用假设分配估算并选择最接近的答案。'
+                : ' 加法、减法、普通乘法输入完整答案；除法输入前三位估算码并允许 ±3% 相对误差；乘法估算输入精确前三位码。'}
             </p>
           </div>
         )}

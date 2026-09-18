@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { TrainingResult } from '../domain/types';
+import { isHypothesisAllocationQuestion } from '../domain/types';
 import { loadTrainingHistory, clearTrainingHistory } from '../storage/history';
 import { QuestionDisplay } from '../components/QuestionDisplay';
 import { getPresetModeName } from '../domain/presets';
@@ -160,16 +161,35 @@ export function HistoryView({ onBack }: HistoryViewProps) {
                               </div>
 
                               <div className="wrong-answer-question">
-                                <QuestionDisplay question={record.question} />
+                                <QuestionDisplay
+                                  question={record.question}
+                                  selectedAnswer={record.userAnswer}
+                                  revealAnswer={isHypothesisAllocationQuestion(record.question)}
+                                />
                               </div>
 
                               <div className="wrong-answer-info">
-                                <div>你的答案：<strong>{record.userAnswer}</strong></div>
                                 <div>
-                                  {record.question.type === 'divide' ? '参考码' : '正确答案'}：
+                                  {isHypothesisAllocationQuestion(record.question) ? '你的选择' : '你的答案'}：
+                                  <strong>{record.userAnswer}</strong>
+                                </div>
+                                <div>
+                                  {isHypothesisAllocationQuestion(record.question)
+                                    ? '正确选项'
+                                    : record.question.type === 'divide' ? '参考码' : '正确答案'}：
                                   <strong className="text-correct">{record.question.answer}</strong>
                                 </div>
-                                <div>计算结果：{record.question.fullResult}</div>
+                                <div>
+                                  {isHypothesisAllocationQuestion(record.question) ? '精确结果' : '计算结果'}：
+                                  {record.question.fullResult}
+                                </div>
+                                {isHypothesisAllocationQuestion(record.question) && !record.isCorrect && (
+                                  <ol className="history-solution-steps">
+                                    {record.question.solutionSteps.map((step, stepIndex) => (
+                                      <li key={stepIndex}>{step}</li>
+                                    ))}
+                                  </ol>
+                                )}
                               </div>
                             </div>
                           ))}

@@ -186,6 +186,18 @@
   background: var(--color-hover-bg);
 }
 
+.review-solution-steps {
+  margin: var(--spacing-md) 0 0;
+  padding: var(--spacing-md) var(--spacing-md) var(--spacing-md) 2rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-hover-bg);
+  line-height: 1.7;
+}
+
+.review-solution-steps li + li {
+  margin-top: var(--spacing-xs);
+}
+
 .perfect-score {
   text-align: center;
   padding: var(--spacing-2xl);

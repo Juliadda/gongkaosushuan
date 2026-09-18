@@ -3,7 +3,7 @@ import type { PresetMode } from './types';
 export interface PresetModeConfig {
   id: PresetMode;
   name: string;
-  category: 'add-subtract' | 'multiply' | 'divide';
+  category: 'add-subtract' | 'multiply' | 'divide' | 'speed-method';
 }
 
 export const PRESET_MODES: PresetModeConfig[] = [
@@ -28,6 +28,9 @@ export const PRESET_MODES: PresetModeConfig[] = [
   { id: 'three-digit-divide-one-digit', name: '三位数除一位数', category: 'divide' },
   { id: 'three-digit-divide-two-digit', name: '三位数除两位数', category: 'divide' },
   { id: 'three-digit-divide-four-digit', name: '三位数除四位数', category: 'divide' },
+
+  // 资料速算方法
+  { id: 'hypothesis-allocation', name: '假设分配', category: 'speed-method' },
 ];
 
 export const QUESTION_COUNT_OPTIONS = [10, 20, 30, 50];

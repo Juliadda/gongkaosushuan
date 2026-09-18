@@ -1,4 +1,5 @@
 import type { TrainingConfig, AnswerRecord } from '../domain/types';
+import { isHypothesisAllocationQuestion } from '../domain/types';
 import { QuestionDisplay } from '../components/QuestionDisplay';
 import { getPresetModeName } from '../domain/presets';
 import './ResultView.css';
@@ -132,24 +133,41 @@ export function ResultView({
                     </div>
 
                     <div className="wrong-item-question">
-                      <QuestionDisplay question={record.question} />
+                      <QuestionDisplay
+                        question={record.question}
+                        selectedAnswer={record.userAnswer}
+                        revealAnswer={isHypothesisAllocationQuestion(record.question)}
+                      />
                     </div>
 
                     <div className="wrong-item-answers">
                       <div className="answer-row answer-user">
-                        <span className="answer-label">你的答案：</span>
+                        <span className="answer-label">
+                          {isHypothesisAllocationQuestion(record.question) ? '你的选择：' : '你的答案：'}
+                        </span>
                         <span className="answer-value">{record.userAnswer}</span>
                       </div>
                       <div className="answer-row answer-correct">
                         <span className="answer-label">
-                          {record.question.type === 'divide' ? '参考码：' : '正确答案：'}
+                          {isHypothesisAllocationQuestion(record.question)
+                            ? '正确选项：'
+                            : record.question.type === 'divide' ? '参考码：' : '正确答案：'}
                         </span>
                         <span className="answer-value">{record.question.answer}</span>
                       </div>
                       <div className="answer-row answer-result">
-                        <span className="answer-label">计算结果：</span>
+                        <span className="answer-label">
+                          {isHypothesisAllocationQuestion(record.question) ? '精确结果：' : '计算结果：'}
+                        </span>
                         <span className="answer-value">{record.question.fullResult}</span>
                       </div>
+                      {isHypothesisAllocationQuestion(record.question) && (
+                        <ol className="review-solution-steps">
+                          {record.question.solutionSteps.map((step, stepIndex) => (
+                            <li key={stepIndex}>{step}</li>
+                          ))}
+                        </ol>
+                      )}
                     </div>
                   </div>
                 ))}

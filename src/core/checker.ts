@@ -1,4 +1,5 @@
-import type { OperationType, PresetMode } from '../domain/types';
+import type { OperationType, PresetMode, Question } from '../domain/types';
+import { isHypothesisAllocationQuestion } from '../domain/types';
 import {
   extractFirstThreeDigits,
   calculateAnswer,
@@ -62,6 +63,25 @@ export function checkAnswer(
       : calculateAnswer(type, operands);
     return trimmed === correctAnswer.toString();
   }
+}
+
+// 统一判题入口：方法题比较选项标识，旧算术题继续沿用原判题规则。
+export function checkQuestionAnswer(
+  userAnswer: string,
+  question: Question,
+  presetMode?: PresetMode
+): boolean {
+  if (isHypothesisAllocationQuestion(question)) {
+    return userAnswer.trim().toUpperCase() === question.answer;
+  }
+
+  return checkAnswer(
+    userAnswer,
+    question.type,
+    question.operands,
+    presetMode,
+    question.operators
+  );
 }
 
 export function isEstimateWithinTolerance(

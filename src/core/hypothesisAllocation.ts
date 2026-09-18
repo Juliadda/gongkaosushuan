@@ -123,40 +123,35 @@ function buildOptions(
 ): { options: HypothesisAllocationOption[]; answer: ChoiceId } | null {
   const unit = chooseAnswerUnit(exactValue);
   const correctValue = roundTo(exactValue, unit);
-  const gapUnits = difficulty === 'easy' ? 9 : difficulty === 'medium' ? 6 : 3;
-  const gap = unit * gapUnits;
+  // 真实考试中大多数选项间距较宽，截取前三位即可判断；仅 hard 保留近选项。
+  const relativeGap = difficulty === 'easy' ? 0.14 : difficulty === 'medium' ? 0.08 : 0.015;
+  const minimumRelativeGap = difficulty === 'easy' ? 0.1 : difficulty === 'medium' ? 0.06 : 0.01;
+  const gap = Math.max(unit * 3, roundTo(exactValue * relativeGap, unit));
 
-  const wrongCandidates = [
+  const mistakeCandidates = [
     { value: roundTo(initialTarget, unit), mistakeTag: '只完成首次分配' },
     { value: roundTo(directPercentTarget, unit), mistakeTag: '直接用现期量乘或减增长率' },
+  ];
+  const offsetCandidates = [
     { value: correctValue - gap, mistakeTag: '尾差分配偏小' },
     { value: correctValue + gap, mistakeTag: '尾差分配偏大' },
     { value: correctValue + gap * 2, mistakeTag: '尾差重复计入' },
+    { value: correctValue - gap * 2, mistakeTag: '尾差修正过度' },
   ];
+  const wrongCandidates = difficulty === 'hard'
+    ? [...offsetCandidates, ...mistakeCandidates]
+    : [...mistakeCandidates, ...offsetCandidates];
 
   const uniqueWrong: Array<{ value: number; mistakeTag: string }> = [];
   for (const candidate of wrongCandidates) {
     if (candidate.value <= 0 || candidate.value === correctValue) continue;
+    if (Math.abs(candidate.value - correctValue) / exactValue < minimumRelativeGap) continue;
     if (uniqueWrong.some(item => item.value === candidate.value)) continue;
     uniqueWrong.push(candidate);
   }
 
   if (uniqueWrong.length < 3) return null;
-
-  // 至少保留两个邻近干扰项，避免选项仅靠数量级即可排除。
-  const closeWrong = [
-    { value: correctValue - gap, mistakeTag: '尾差分配偏小' },
-    { value: correctValue + gap, mistakeTag: '尾差分配偏大' },
-  ].filter(item => item.value > 0);
-  const selectedWrong: Array<{ value: number; mistakeTag: string }> = [];
-  for (const item of closeWrong) {
-    if (!selectedWrong.some(selected => selected.value === item.value)) selectedWrong.push(item);
-  }
-  for (const item of uniqueWrong) {
-    if (selectedWrong.length === 3) break;
-    if (!selectedWrong.some(selected => selected.value === item.value)) selectedWrong.push(item);
-  }
-  if (selectedWrong.length < 3) return null;
+  const selectedWrong = uniqueWrong.slice(0, 3);
 
   const answer = CHOICE_IDS[correctIndex];
   const options: HypothesisAllocationOption[] = [];
@@ -336,8 +331,9 @@ export function generateHypothesisAllocationQuestion(
   options: GenerateOptions = {}
 ): HypothesisAllocationQuestion {
   const target = options.target ?? (rng() < 0.5 ? 'base' : 'growth');
+  const difficultyRoll = rng();
   const difficulty = options.difficulty ?? (
-    rng() < 0.25 ? 'easy' : rng() < 2 / 3 ? 'medium' : 'hard'
+    difficultyRoll < 0.4 ? 'easy' : difficultyRoll < 0.8 ? 'medium' : 'hard'
   );
   const correctIndex = options.correctIndex ?? randomIndex(4, rng);
   const recentFingerprints = options.recentFingerprints ?? [];
@@ -377,7 +373,7 @@ export function generateHypothesisAllocationSet(
   const usedNumericKeys = new Set<string>();
   const correctOffset = randomIndex(4, rng);
   const targetOffset = randomIndex(2, rng);
-  const difficultyCycle: HypothesisAllocationDifficulty[] = ['easy', 'medium', 'hard', 'medium'];
+  const difficultyCycle: HypothesisAllocationDifficulty[] = ['easy', 'medium', 'easy', 'medium', 'hard'];
 
   for (let index = 0; index < count; index++) {
     const target: HypothesisAllocationTarget = (index + targetOffset) % 2 === 0 ? 'base' : 'growth';

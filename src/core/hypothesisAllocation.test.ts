@@ -19,6 +19,24 @@ function nearestOption(question: ReturnType<typeof generateHypothesisAllocationQ
     .sort((left, right) => Math.abs(left.value - value) - Math.abs(right.value - value))[0];
 }
 
+function nearestWrongGapRatio(question: ReturnType<typeof generateHypothesisAllocationQuestion>) {
+  const correct = question.options.find(option => option.id === question.answer)!;
+  return Math.min(
+    ...question.options
+      .filter(option => option.id !== question.answer)
+      .map(option => Math.abs(option.value - correct.value))
+  ) / question.exactValue;
+}
+
+function quickThreeDigitEstimate(question: ReturnType<typeof generateHypothesisAllocationQuestion>) {
+  const magnitude = 10 ** Math.max(0, Math.floor(Math.log10(question.presentValue)) - 2);
+  const truncatedPresent = Math.floor(question.presentValue / magnitude) * magnitude;
+  const rate = question.ratePercent / 100;
+  return question.target === 'base'
+    ? truncatedPresent / (1 + rate)
+    : (truncatedPresent * rate) / (1 + rate);
+}
+
 describe('hypothesis allocation generator', () => {
   it('generates 1,000 mathematically safe candidates within the attempt cap', () => {
     const rng = createSeededRandom(20260918);
@@ -57,11 +75,23 @@ describe('hypothesis allocation generator', () => {
     const choiceCounts = ['A', 'B', 'C', 'D'].map(choice => (
       questions.filter(question => question.answer === choice).length
     ));
+    const closeCount = questions.filter(question => question.difficulty === 'hard').length;
+    const wideQuestions = questions.filter(question => question.difficulty !== 'hard');
 
     expect(questions).toHaveLength(count);
     expect(new Set(numericKeys).size).toBe(count);
     expect(Math.abs(baseCount - (count - baseCount))).toBeLessThanOrEqual(1);
     expect(Math.max(...choiceCounts) - Math.min(...choiceCounts)).toBeLessThanOrEqual(1);
+    expect(closeCount).toBe(count * 0.2);
+    expect(wideQuestions).toHaveLength(count * 0.8);
+    expect(wideQuestions.every(question => nearestWrongGapRatio(question) >= 0.059)).toBe(true);
+    expect(wideQuestions.every(question => (
+      nearestOption(question, quickThreeDigitEstimate(question)).id === question.answer
+    ))).toBe(true);
+    expect(questions
+      .filter(question => question.difficulty === 'hard')
+      .every(question => nearestWrongGapRatio(question) <= 0.04)
+    ).toBe(true);
   });
 
   it('uses the rotating fallback without an unbounded retry loop', () => {

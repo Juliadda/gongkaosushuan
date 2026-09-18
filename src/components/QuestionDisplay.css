@@ -1,0 +1,41 @@
+.question-display {
+  text-align: center;
+  margin: var(--spacing-lg) 0;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.question-expression {
+  font-size: var(--font-size-2xl);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.question-display-large .question-expression {
+  font-size: var(--font-size-3xl);
+}
+
+.operand {
+  font-variant-numeric: tabular-nums;
+}
+
+.operator {
+  color: var(--color-text-secondary);
+  margin: 0 var(--spacing-sm);
+}
+
+@media (max-width: 768px) {
+  .question-display {
+    min-height: 80px;
+  }
+
+  .question-expression {
+    font-size: var(--font-size-xl);
+  }
+
+  .question-display-large .question-expression {
+    font-size: var(--font-size-2xl);
+  }
+}

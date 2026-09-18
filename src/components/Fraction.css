@@ -1,0 +1,55 @@
+.fraction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  margin: 0 var(--spacing-sm);
+}
+
+.fraction-numerator,
+.fraction-denominator {
+  font-size: var(--font-size-2xl);
+  font-weight: 500;
+  line-height: 1.2;
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.fraction-line {
+  width: 100%;
+  min-width: 60px;
+  height: 2px;
+  background-color: var(--color-text-primary);
+  margin: var(--spacing-xs) 0;
+}
+
+.fraction-large .fraction-numerator,
+.fraction-large .fraction-denominator {
+  font-size: var(--font-size-3xl);
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.fraction-large .fraction-line {
+  min-width: 80px;
+  height: 3px;
+  margin: var(--spacing-sm) 0;
+}
+
+@media (max-width: 768px) {
+  .fraction-numerator,
+  .fraction-denominator {
+    font-size: var(--font-size-xl);
+  }
+
+  .fraction-line {
+    min-width: 50px;
+  }
+
+  .fraction-large .fraction-numerator,
+  .fraction-large .fraction-denominator {
+    font-size: var(--font-size-2xl);
+  }
+
+  .fraction-large .fraction-line {
+    min-width: 60px;
+  }
+}

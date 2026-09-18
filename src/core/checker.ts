@@ -5,7 +5,7 @@ import {
   calculateMixedAddSubtract,
 } from './calculator';
 
-export const DIVISION_RELATIVE_TOLERANCE = 0.03;
+export const DIVISION_RELATIVE_TOLERANCE = 0.01;
 
 // 判断某个运算类型是否需要使用前三位码判题
 export function usesFirstThreeDigits(type: OperationType, presetMode?: PresetMode): boolean {
@@ -42,12 +42,16 @@ export function checkAnswer(
     return false;
   }
 
-  // 除法是估算训练：前三位估算码所代表的数值允许 ±3% 相对误差。
+  // 除法和乘法估算：前三位估算码所代表的数值允许 ±1% 相对误差。
   if (type === 'divide') {
-    return isDivisionEstimateWithinTolerance(trimmed, operands);
+    return isEstimateWithinTolerance(userAnswer, type, operands);
   }
 
-  // 乘法估算仍按唯一前三位码判题。
+  if (type === 'multiply' && presetMode === 'multiply-estimate') {
+    return isEstimateWithinTolerance(userAnswer, type, operands);
+  }
+
+  // 其他使用前三位码的模式仍按唯一前三位码判题。
   if (usesFirstThreeDigits(type, presetMode)) {
     const correctCode = extractFirstThreeDigits(type, operands);
     return trimmed === correctCode;
@@ -60,19 +64,29 @@ export function checkAnswer(
   }
 }
 
-export function isDivisionEstimateWithinTolerance(
+export function isEstimateWithinTolerance(
   userAnswer: string,
+  type: OperationType,
   operands: number[],
   tolerance: number = DIVISION_RELATIVE_TOLERANCE
 ): boolean {
-  if (!/^\d+$/.test(userAnswer) || operands.length !== 2 || operands[1] === 0) {
+  if (!/^\d+$/.test(userAnswer) || operands.length !== 2) {
     return false;
   }
 
-  const actualValue = operands[0] / operands[1];
-  const referenceCode = extractFirstThreeDigits('divide', operands);
+  let actualValue: number;
+  if (type === 'divide') {
+    if (operands[1] === 0) return false;
+    actualValue = operands[0] / operands[1];
+  } else if (type === 'multiply') {
+    actualValue = operands[0] * operands[1];
+  } else {
+    return false;
+  }
 
-  // 保留原有“0.5 → 5、2.4 → 24”的位数规则，避免短码产生歧义。
+  const referenceCode = extractFirstThreeDigits(type, operands);
+
+  // 保留原有”0.5 → 5、2.4 → 24”的位数规则，避免短码产生歧义。
   if (actualValue <= 0 || userAnswer.length !== referenceCode.length) {
     return false;
   }
@@ -83,6 +97,14 @@ export function isDivisionEstimateWithinTolerance(
   const relativeError = Math.abs(estimatedValue - actualValue) / actualValue;
 
   return relativeError <= tolerance + Number.EPSILON;
+}
+
+export function isDivisionEstimateWithinTolerance(
+  userAnswer: string,
+  operands: number[],
+  tolerance: number = DIVISION_RELATIVE_TOLERANCE
+): boolean {
+  return isEstimateWithinTolerance(userAnswer, 'divide', operands, tolerance);
 }
 
 // 获取正确答案（字符串形式）

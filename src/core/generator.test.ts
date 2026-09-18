@@ -163,16 +163,17 @@ describe('generator', () => {
       const rng = createSeededRandom(12345);
       const question = generatePresetQuestion('round-hundred', rng);
 
-      expect(question.type).toBe('add');
+      expect(question.type).toBe('subtract');
       expect(question.operands).toHaveLength(2);
 
-      const [num, diff] = question.operands;
-      const sum = num + diff;
+      const [minuend, subtrahend] = question.operands;
 
-      // Sum should be a multiple of 100
-      expect(sum % 100).toBe(0);
-      // First number should not be a multiple of 100
-      expect(num % 100).not.toBe(0);
+      // Minuend should be a multiple of 100
+      expect(minuend % 100).toBe(0);
+      // Subtrahend should not be a multiple of 100
+      expect(subtrahend % 100).not.toBe(0);
+      // Result should be non-negative
+      expect(minuend).toBeGreaterThan(subtrahend);
     });
   });
 

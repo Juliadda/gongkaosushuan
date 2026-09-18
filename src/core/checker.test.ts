@@ -77,7 +77,7 @@ describe('checker', () => {
     it('should check division with three full digits', () => {
       // 2456 / 1000 = 2.456 -> "245"
       expect(checkAnswer('245', 'divide', [2456, 1000])).toBe(true);
-      expect(checkAnswer('246', 'divide', [2456, 1000])).toBe(true); // 估算误差小于 3%
+      expect(checkAnswer('246', 'divide', [2456, 1000])).toBe(true); // 估算误差小于 1%
     });
 
     it('should check division with leading zeros in decimal', () => {
@@ -99,15 +99,18 @@ describe('checker', () => {
     it('should accept nearby division estimates but keep multiply-estimate exact', () => {
       expect(checkAnswer('245', 'divide', [2459, 1000])).toBe(true);
       expect(checkAnswer('246', 'divide', [2459, 1000])).toBe(true);
-      expect(checkAnswer('104', 'multiply', [23, 45], 'multiply-estimate')).toBe(false);
+      expect(checkAnswer('103', 'multiply', [23, 45], 'multiply-estimate')).toBe(true);
+      expect(checkAnswer('104', 'multiply', [23, 45], 'multiply-estimate')).toBe(true);
     });
 
-    it('should allow ±3% relative error for division estimates', () => {
-      expect(checkAnswer('774', 'divide', [388, 4894])).toBe(true);
+    it('should allow ±1% relative error for division estimates', () => {
+      expect(checkAnswer('790', 'divide', [388, 4894])).toBe(true);
       expect(checkAnswer('792', 'divide', [388, 4894])).toBe(true);
-      expect(checkAnswer('817', 'divide', [388, 4894])).toBe(false);
-      expect(isDivisionEstimateWithinTolerance('194', [200, 1])).toBe(true);
-      expect(isDivisionEstimateWithinTolerance('193', [200, 1])).toBe(false);
+      expect(checkAnswer('800', 'divide', [388, 4894])).toBe(true);
+      expect(checkAnswer('784', 'divide', [388, 4894])).toBe(false);
+      expect(checkAnswer('801', 'divide', [388, 4894])).toBe(false);
+      expect(isDivisionEstimateWithinTolerance('198', [200, 1])).toBe(true);
+      expect(isDivisionEstimateWithinTolerance('197', [200, 1])).toBe(false);
     });
 
     it('should preserve short-code rules for terminating decimals', () => {

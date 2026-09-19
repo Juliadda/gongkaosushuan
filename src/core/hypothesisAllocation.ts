@@ -16,20 +16,33 @@ const FEATURE_FRACTION_RATES = [
   10, 11.1, 12.5, 14.3, 16.7, 20, 25,
 ];
 
-const RATE_POOL = [
-  3.4, 3.8, 4.3, 4.7, 6.0, 6.9, 7.4, 8.7, 9.6,
-  10.6, 11.7, 12.0, 13.2, 13.7, 14.8, 15.4, 16.1,
-  17.3, 18.1, 18.8, 19.3, 20.8, 21.6, 22.4, 23.1, 24.2,
+// 常见增长率池：1%–15%，训练频率约 85%
+const COMMON_RATE_POOL = [
+  1.2, 1.8, 2.3, 2.9, 3.4, 3.8, 4.3, 4.7,
+  6.0, 6.9, 7.4, 8.7, 9.6,
+  10.6, 11.7, 12.0, 13.2, 13.7, 14.8, 15.0,
 ];
 
-const FALLBACK_RECIPES = [
+// 较高增长率池：>15%–25%，训练频率约 15%
+const HIGH_RATE_POOL = [
+  15.4, 16.1, 17.3, 18.1, 18.8, 19.3,
+  20.8, 21.6, 22.4, 23.1, 24.2,
+];
+
+const COMMON_FALLBACK_RECIPES = [
   { presentValue: 6384, ratePercent: 8.7 },
   { presentValue: 9276, ratePercent: 13.2 },
   { presentValue: 24860, ratePercent: 6.9 },
-  { presentValue: 57320, ratePercent: 18.1 },
-  { presentValue: 84600, ratePercent: 22.4 },
   { presentValue: 41850, ratePercent: 11.7 },
 ];
+
+const HIGH_FALLBACK_RECIPES = [
+  { presentValue: 57320, ratePercent: 18.1 },
+  { presentValue: 84600, ratePercent: 22.4 },
+  { presentValue: 63900, ratePercent: 19.3 },
+];
+
+type RateFrequency = 'common' | 'high';
 
 interface GenerateOptions {
   target?: HypothesisAllocationTarget;
@@ -39,6 +52,7 @@ interface GenerateOptions {
   usedNumericKeys?: ReadonlySet<string>;
   maxAttempts?: number;
   fallbackSeed?: number;
+  rateFrequency?: RateFrequency;
 }
 
 interface CandidateParams {
@@ -287,16 +301,18 @@ function createRandomParams(
   rng: RandomGenerator,
   target: HypothesisAllocationTarget,
   difficulty: HypothesisAllocationDifficulty,
-  correctIndex: number
+  correctIndex: number,
+  rateFrequency: RateFrequency
 ): CandidateParams {
   const fiveDigit = rng() >= 0.5;
   const min = fiveDigit ? 20000 : 4000;
   const max = fiveDigit ? 98000 : 9900;
   const presentValue = Math.floor(rng() * (max - min + 1)) + min;
+  const ratePool = rateFrequency === 'common' ? COMMON_RATE_POOL : HIGH_RATE_POOL;
 
   return {
     presentValue,
-    ratePercent: RATE_POOL[randomIndex(RATE_POOL.length, rng)],
+    ratePercent: ratePool[randomIndex(ratePool.length, rng)],
     target,
     difficulty,
     correctIndex,
@@ -307,11 +323,13 @@ function buildFallback(
   seed: number,
   target: HypothesisAllocationTarget,
   difficulty: HypothesisAllocationDifficulty,
-  correctIndex: number
+  correctIndex: number,
+  rateFrequency: RateFrequency
 ): HypothesisAllocationQuestion {
-  for (let offset = 0; offset < FALLBACK_RECIPES.length; offset++) {
-    const recipe = FALLBACK_RECIPES[(seed + offset) % FALLBACK_RECIPES.length];
-    const scale = 1 + (Math.floor(seed / FALLBACK_RECIPES.length) % 3);
+  const recipes = rateFrequency === 'common' ? COMMON_FALLBACK_RECIPES : HIGH_FALLBACK_RECIPES;
+  for (let offset = 0; offset < recipes.length; offset++) {
+    const recipe = recipes[(seed + offset) % recipes.length];
+    const scale = 1 + (Math.floor(seed / recipes.length) % 3);
     const candidate = buildCandidate({
       presentValue: recipe.presentValue * scale,
       ratePercent: recipe.ratePercent,
@@ -336,13 +354,14 @@ export function generateHypothesisAllocationQuestion(
     difficultyRoll < 0.4 ? 'easy' : difficultyRoll < 0.8 ? 'medium' : 'hard'
   );
   const correctIndex = options.correctIndex ?? randomIndex(4, rng);
+  const rateFrequency = options.rateFrequency ?? (rng() < 0.85 ? 'common' : 'high');
   const recentFingerprints = options.recentFingerprints ?? [];
   const usedNumericKeys = options.usedNumericKeys ?? new Set<string>();
   const maxAttempts = Math.max(0, Math.min(MAX_CANDIDATE_ATTEMPTS, options.maxAttempts ?? MAX_CANDIDATE_ATTEMPTS));
   let firstValid: HypothesisAllocationQuestion | null = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const params = createRandomParams(rng, target, difficulty, correctIndex);
+    const params = createRandomParams(rng, target, difficulty, correctIndex, rateFrequency);
     const candidate = buildCandidate(params);
     if (!candidate) continue;
     candidate.generationAttempts = attempt;
@@ -359,7 +378,8 @@ export function generateHypothesisAllocationQuestion(
     options.fallbackSeed ?? 0,
     target,
     difficulty,
-    correctIndex
+    correctIndex,
+    rateFrequency
   );
   fallback.generationAttempts = maxAttempts;
   return fallback;
@@ -375,12 +395,29 @@ export function generateHypothesisAllocationSet(
   const targetOffset = randomIndex(2, rng);
   const difficultyCycle: HypothesisAllocationDifficulty[] = ['easy', 'medium', 'easy', 'medium', 'hard'];
 
+  // 配额控制：约 15% 为较高增长率，采用概率舍入
+  const expectedHighCount = count * 0.15;
+  const highCount = Math.floor(expectedHighCount) + (rng() < (expectedHighCount - Math.floor(expectedHighCount)) ? 1 : 0);
+
+  // 先生成区间标记数组，然后洗牌
+  const rateFrequencies: RateFrequency[] = [
+    ...Array(highCount).fill('high' as RateFrequency),
+    ...Array(count - highCount).fill('common' as RateFrequency),
+  ];
+
+  // Fisher-Yates 洗牌
+  for (let index = rateFrequencies.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(rng() * (index + 1));
+    [rateFrequencies[index], rateFrequencies[swapIndex]] = [rateFrequencies[swapIndex], rateFrequencies[index]];
+  }
+
   for (let index = 0; index < count; index++) {
     const target: HypothesisAllocationTarget = (index + targetOffset) % 2 === 0 ? 'base' : 'growth';
     const question = generateHypothesisAllocationQuestion(rng, {
       target,
       difficulty: difficultyCycle[index % difficultyCycle.length],
       correctIndex: (index + correctOffset) % 4,
+      rateFrequency: rateFrequencies[index],
       recentFingerprints: questions.slice(-5).map(item => item.fingerprint),
       usedNumericKeys,
       fallbackSeed: index,

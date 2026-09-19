@@ -119,4 +119,145 @@ describe('hypothesis allocation generator', () => {
     expect(rates.size).toBeGreaterThanOrEqual(12);
     expect(magnitudes.size).toBe(2);
   });
+
+  describe('rate distribution', () => {
+    it('common pool generates only 1%–15% rates', () => {
+      const rng = createSeededRandom(5000);
+      for (let index = 0; index < 100; index++) {
+        const question = generateHypothesisAllocationQuestion(rng, {
+          rateFrequency: 'common',
+          fallbackSeed: index,
+        });
+        expect(question.ratePercent).toBeGreaterThanOrEqual(1);
+        expect(question.ratePercent).toBeLessThanOrEqual(15);
+        expect(isFeatureFractionRate(question.ratePercent)).toBe(false);
+      }
+    });
+
+    it('high pool generates only >15%–25% rates', () => {
+      const rng = createSeededRandom(6000);
+      for (let index = 0; index < 100; index++) {
+        const question = generateHypothesisAllocationQuestion(rng, {
+          rateFrequency: 'high',
+          fallbackSeed: index,
+        });
+        expect(question.ratePercent).toBeGreaterThan(15);
+        expect(question.ratePercent).toBeLessThanOrEqual(25);
+        expect(isFeatureFractionRate(question.ratePercent)).toBe(false);
+      }
+    });
+
+    it('10-question set has 1 or 2 high-rate questions', () => {
+      for (let seed = 1000; seed < 1050; seed++) {
+        const questions = generateHypothesisAllocationSet(10, createSeededRandom(seed));
+        const highCount = questions.filter(q => q.ratePercent > 15).length;
+        expect(highCount).toBeGreaterThanOrEqual(1);
+        expect(highCount).toBeLessThanOrEqual(2);
+      }
+    });
+
+    it('20-question set has exactly 3 high-rate questions', () => {
+      for (let seed = 2000; seed < 2050; seed++) {
+        const questions = generateHypothesisAllocationSet(20, createSeededRandom(seed));
+        const highCount = questions.filter(q => q.ratePercent > 15).length;
+        expect(highCount).toBe(3);
+      }
+    });
+
+    it('30-question set has 4 or 5 high-rate questions', () => {
+      for (let seed = 3000; seed < 3050; seed++) {
+        const questions = generateHypothesisAllocationSet(30, createSeededRandom(seed));
+        const highCount = questions.filter(q => q.ratePercent > 15).length;
+        expect(highCount).toBeGreaterThanOrEqual(4);
+        expect(highCount).toBeLessThanOrEqual(5);
+      }
+    });
+
+    it('50-question set has 7 or 8 high-rate questions', () => {
+      for (let seed = 5000; seed < 5050; seed++) {
+        const questions = generateHypothesisAllocationSet(50, createSeededRandom(seed));
+        const highCount = questions.filter(q => q.ratePercent > 15).length;
+        expect(highCount).toBeGreaterThanOrEqual(7);
+        expect(highCount).toBeLessThanOrEqual(8);
+      }
+    });
+
+    it('bulk generation converges to 85%/15% distribution', () => {
+      const rng = createSeededRandom(9999);
+      const allQuestions: ReturnType<typeof generateHypothesisAllocationQuestion>[] = [];
+
+      for (let batch = 0; batch < 100; batch++) {
+        const batchQuestions = generateHypothesisAllocationSet(10, rng);
+        allQuestions.push(...batchQuestions);
+      }
+
+      const commonCount = allQuestions.filter(q => q.ratePercent <= 15).length;
+      const highCount = allQuestions.filter(q => q.ratePercent > 15).length;
+      const commonRatio = commonCount / allQuestions.length;
+
+      expect(allQuestions.length).toBe(1000);
+      expect(commonRatio).toBeGreaterThan(0.82);
+      expect(commonRatio).toBeLessThan(0.88);
+      expect(commonCount + highCount).toBe(1000);
+    });
+
+    it('single-question mode long-term distribution approaches 85%/15%', () => {
+      const rng = createSeededRandom(8888);
+      const questions: ReturnType<typeof generateHypothesisAllocationQuestion>[] = [];
+
+      for (let index = 0; index < 1000; index++) {
+        const question = generateHypothesisAllocationQuestion(rng, {
+          fallbackSeed: index,
+        });
+        questions.push(question);
+      }
+
+      const commonCount = questions.filter(q => q.ratePercent <= 15).length;
+      const commonRatio = commonCount / questions.length;
+
+      expect(commonRatio).toBeGreaterThan(0.82);
+      expect(commonRatio).toBeLessThan(0.88);
+    });
+
+    it('common-frequency fallback stays in 1%–15% range', () => {
+      const question = generateHypothesisAllocationQuestion(createSeededRandom(100), {
+        maxAttempts: 0,
+        rateFrequency: 'common',
+        fallbackSeed: 0,
+        target: 'base',
+        difficulty: 'easy',
+        correctIndex: 0,
+      });
+
+      expect(question.usedFallback).toBe(true);
+      expect(question.ratePercent).toBeGreaterThanOrEqual(1);
+      expect(question.ratePercent).toBeLessThanOrEqual(15);
+    });
+
+    it('high-frequency fallback stays in >15%–25% range', () => {
+      const question = generateHypothesisAllocationQuestion(createSeededRandom(200), {
+        maxAttempts: 0,
+        rateFrequency: 'high',
+        fallbackSeed: 1,
+        target: 'growth',
+        difficulty: 'medium',
+        correctIndex: 2,
+      });
+
+      expect(question.usedFallback).toBe(true);
+      expect(question.ratePercent).toBeGreaterThan(15);
+      expect(question.ratePercent).toBeLessThanOrEqual(25);
+    });
+
+    it('high-rate questions are not clustered at the end', () => {
+      const questions = generateHypothesisAllocationSet(10, createSeededRandom(7777));
+      const highIndices = questions
+        .map((q, index) => (q.ratePercent > 15 ? index : -1))
+        .filter(index => index >= 0);
+
+      // 不应该所有较高增长率都在后半段
+      const allInSecondHalf = highIndices.every(index => index >= 5);
+      expect(allInSecondHalf).toBe(false);
+    });
+  });
 });
